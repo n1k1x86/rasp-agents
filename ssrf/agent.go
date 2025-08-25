@@ -62,6 +62,7 @@ func NewClient(ctx context.Context) (*SSRFClient, error) {
 	}()
 
 	go func() {
+		<-ctx.Done()
 		err := CloseClient(client)
 		if err != nil {
 			log.Panic(err)
