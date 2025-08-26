@@ -17,6 +17,12 @@ func NewRegAgentRequest(hostRules, ipRules, regexpRules []string,
 	}
 }
 
+type Rules struct {
+	IPRules     []string
+	HostsRules  []string
+	RegexpRules []string
+}
+
 func NewDeactivateAgentRequest(serviceName, agentName, agentID string) *rasp_rpc.DeactivateSSRFAgentRequest {
 	return &rasp_rpc.DeactivateSSRFAgentRequest{
 		ServiceName: serviceName,
