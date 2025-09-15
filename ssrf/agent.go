@@ -89,7 +89,7 @@ func NewRules(ipRules, hostsRules, regexpRules []string) Rules {
 	}
 }
 
-func NewClient(ctx context.Context, ipRules, hostsRules, regexpRules []string) (*SSRFClient, error) {
+func NewClient(ctx context.Context) (*SSRFClient, error) {
 	client, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func NewClient(ctx context.Context, ipRules, hostsRules, regexpRules []string) (
 	ssrfClient := &SSRFClient{
 		Stub:  stub,
 		ctx:   ctx,
-		rules: NewRules(ipRules, hostsRules, regexpRules),
+		rules: Rules{},
 	}
 
 	return ssrfClient, nil
