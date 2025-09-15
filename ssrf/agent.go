@@ -108,15 +108,24 @@ func (s *SSRFClient) runUpdater() error {
 		return err
 	}
 	go func() {
+		defer func() {
+			r := recover()
+			if r != nil {
+				log.Printf("Panic in updater: %s", r)
+			}
+		}()
 		for {
 			select {
 			case <-s.ctx.Done():
 				return
 			default:
 				newRules, err := stream.Recv()
-				if err == io.EOF {
-					log.Println("END OF STREAM")
-					return
+				if err != nil {
+					if err == io.EOF {
+						log.Println("END OF STREAM")
+						return
+					}
+					log.Println(err)
 				}
 				log.Println("GOT NEW RULES, RULES: ", newRules)
 			}
