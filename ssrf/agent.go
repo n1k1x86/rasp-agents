@@ -2,6 +2,7 @@ package ssrf
 
 import (
 	"context"
+	"io"
 	"log"
 	"regexp"
 	"slices"
@@ -12,10 +13,11 @@ import (
 )
 
 type SSRFClient struct {
-	Stub    rasp_rpc.RASPCentralClient
-	rules   Rules
-	agentID string
-	ctx     context.Context
+	Stub        rasp_rpc.RASPCentralClient
+	rules       Rules
+	agentID     string
+	serviceName string
+	ctx         context.Context
 }
 
 func (s *SSRFClient) RegAgent(hostRules, ipRules, regexpRules []string,
@@ -27,6 +29,8 @@ func (s *SSRFClient) RegAgent(hostRules, ipRules, regexpRules []string,
 		return err
 	}
 	s.agentID = resp.AgentID
+	s.serviceName = serviceName
+	s.runUpdater()
 
 	log.Println(resp.Detail)
 	return nil
@@ -93,6 +97,48 @@ func NewRules(ipRules, hostsRules, regexpRules []string) Rules {
 	}
 }
 
+func (s *SSRFClient) runUpdater() error {
+	req := &rasp_rpc.AgentRequest{
+		AgentID:     s.agentID,
+		ServiceName: s.serviceName,
+	}
+	stream, err := s.Stub.SyncRules(s.ctx, req)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	go func() {
+		select {
+		case <-s.ctx.Done():
+			return
+		default:
+			for {
+				newRules, err := stream.Recv()
+				if err == io.EOF {
+					log.Println("END OF STREAM")
+					break
+				}
+				log.Println("GOT NEW RULES, RULES: ", newRules)
+			}
+		}
+	}()
+	log.Println("updater for ssrf agent is running")
+	return nil
+}
+
+func (s *SSRFClient) deleteAgent() error {
+	req := &rasp_rpc.AgentRequest{
+		AgentID:     s.agentID,
+		ServiceName: s.serviceName,
+	}
+	resp, err := s.Stub.CloseSSRFAgent(s.ctx, req)
+	if err != nil {
+		return err
+	}
+	log.Println(resp.Detail)
+	return nil
+}
+
 func NewClient(ctx context.Context) (*SSRFClient, error) {
 	client, err := grpc.NewClient("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -106,14 +152,6 @@ func NewClient(ctx context.Context) (*SSRFClient, error) {
 		}
 	}()
 
-	go func() {
-		<-ctx.Done()
-		err := CloseClient(client)
-		if err != nil {
-			log.Panic(err)
-		}
-	}()
-
 	stub := rasp_rpc.NewRASPCentralClient(client)
 
 	ssrfClient := &SSRFClient{
@@ -121,6 +159,18 @@ func NewClient(ctx context.Context) (*SSRFClient, error) {
 		ctx:   ctx,
 		rules: Rules{},
 	}
+
+	go func() {
+		<-ctx.Done()
+		err := ssrfClient.deleteAgent()
+		if err != nil {
+			log.Panic(err)
+		}
+		err = CloseClient(client)
+		if err != nil {
+			log.Panic(err)
+		}
+	}()
 
 	return ssrfClient, nil
 }
