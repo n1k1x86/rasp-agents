@@ -32,6 +32,10 @@ func (s *SSRFClient) RegAgent(hostRules, ipRules, regexpRules []string,
 	return nil
 }
 
+func (s *SSRFClient) GetAgentID() string {
+	return s.agentID
+}
+
 func (s *SSRFClient) DeactivateAgent(serviceName, agentName string) error {
 	req := NewDeactivateAgentRequest(serviceName, agentName, s.agentID)
 	resp, err := s.Stub.DeactivateSSRFAgent(s.ctx, req)
