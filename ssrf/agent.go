@@ -127,11 +127,13 @@ func (s *SSRFClient) runUpdater() error {
 }
 
 func (s *SSRFClient) deleteAgent() error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	req := &rasp_rpc.AgentRequest{
 		AgentID:     s.agentID,
 		ServiceName: s.serviceName,
 	}
-	resp, err := s.Stub.CloseSSRFAgent(s.ctx, req)
+	resp, err := s.Stub.CloseSSRFAgent(ctx, req)
 	if err != nil {
 		return err
 	}
