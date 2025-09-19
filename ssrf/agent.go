@@ -13,23 +13,21 @@ import (
 )
 
 type SSRFClient struct {
-	Stub        rasp_rpc.RASPCentralClient
-	rules       Rules
-	agentID     string
-	serviceName string
-	ctx         context.Context
+	Stub      rasp_rpc.RASPCentralClient
+	rules     Rules
+	agentID   string
+	serviceID string
+	ctx       context.Context
 }
 
-func (s *SSRFClient) RegAgent(hostRules, ipRules, regexpRules []string,
-	serviceName, serviceDescription, agentName, updateURL string) error {
-	req := NewRegAgentRequest(hostRules, ipRules, regexpRules,
-		serviceName, serviceDescription, agentName, updateURL)
+func (s *SSRFClient) RegAgent(agentName, serviceID string) error {
+	req := NewRegAgentRequest(agentName, serviceID)
 	resp, err := s.Stub.RegSSRFAgent(s.ctx, req)
 	if err != nil {
 		return err
 	}
 	s.agentID = resp.AgentID
-	s.serviceName = serviceName
+	s.serviceID = req.ServiceID
 	s.runUpdater()
 
 	log.Println(resp.Detail)
@@ -38,17 +36,6 @@ func (s *SSRFClient) RegAgent(hostRules, ipRules, regexpRules []string,
 
 func (s *SSRFClient) GetAgentID() string {
 	return s.agentID
-}
-
-func (s *SSRFClient) DeactivateAgent(serviceName, agentName string) error {
-	req := NewDeactivateAgentRequest(serviceName, agentName, s.agentID)
-	resp, err := s.Stub.DeactivateSSRFAgent(s.ctx, req)
-	if err != nil {
-		return err
-	}
-
-	log.Println(resp.Detail)
-	return nil
 }
 
 func (s *SSRFClient) CheckHost(host string) bool {
@@ -97,10 +84,16 @@ func NewRules(ipRules, hostsRules, regexpRules []string) Rules {
 	}
 }
 
+func (s *SSRFClient) AcceptRules(rules *rasp_rpc.NewRules) {
+	s.rules.HostsRules = rules.GetRules().HostRules
+	s.rules.IPRules = rules.GetRules().IPRules
+	s.rules.RegexpRules = rules.GetRules().RegexpRules
+	log.Println("got new rules, rules", rules)
+}
+
 func (s *SSRFClient) runUpdater() error {
 	req := &rasp_rpc.AgentRequest{
-		AgentID:     s.agentID,
-		ServiceName: s.serviceName,
+		AgentID: s.agentID,
 	}
 	stream, err := s.Stub.SyncRules(s.ctx, req)
 	if err != nil {
@@ -127,7 +120,9 @@ func (s *SSRFClient) runUpdater() error {
 					}
 					log.Println(err)
 				}
-				log.Println("GOT NEW RULES, RULES: ", newRules)
+				if newRules != nil {
+					s.AcceptRules(newRules)
+				}
 			}
 		}
 	}()
@@ -139,8 +134,7 @@ func (s *SSRFClient) deleteAgent() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	req := &rasp_rpc.AgentRequest{
-		AgentID:     s.agentID,
-		ServiceName: s.serviceName,
+		AgentID: s.agentID,
 	}
 	resp, err := s.Stub.CloseSSRFAgent(ctx, req)
 	if err != nil {

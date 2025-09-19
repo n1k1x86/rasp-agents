@@ -3,7 +3,7 @@ module github.com/n1k1x86/rasp-agents
 go 1.23.0
 
 require (
-	github.com/n1k1x86/rasp-grpc-contract v0.1.4
+	github.com/n1k1x86/rasp-grpc-contract v0.1.7
 	google.golang.org/grpc v1.75.1
 )
 
