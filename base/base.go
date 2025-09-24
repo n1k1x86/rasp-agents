@@ -12,11 +12,12 @@ import (
 )
 
 type BaseClient struct {
-	Stub      rasp_rpc.RASPCentralClient
-	AgentID   string
-	ServiceID string
-	AgentType string
-	ctx       context.Context
+	Stub          rasp_rpc.RASPCentralClient
+	AgentID       string
+	ServiceID     string
+	AgentType     string
+	RulesAcceptor func(rules *rasp_rpc.NewRules)
+	ctx           context.Context
 }
 
 func (b *BaseClient) RegAgent(agentName, serviceID string) error {
@@ -42,8 +43,8 @@ func CloseClient(client *grpc.ClientConn) error {
 	return nil
 }
 
-func (b *BaseClient) AcceptRules(rules *rasp_rpc.NewRules) error {
-	return fmt.Errorf("unimplimented Accept Rules method")
+func AcceptRules(rules *rasp_rpc.NewRules) {
+	log.Println("unimplimented Accept Rules method")
 }
 
 func (b *BaseClient) RunUpdater() error {
@@ -77,10 +78,7 @@ func (b *BaseClient) RunUpdater() error {
 					log.Println(err)
 				}
 				if newRules != nil {
-					err = b.AcceptRules(newRules)
-					if err != nil {
-						log.Println(err)
-					}
+					b.RulesAcceptor(newRules)
 				}
 			}
 		}
@@ -104,7 +102,7 @@ func (b *BaseClient) DeleteAgent() error {
 	return nil
 }
 
-func NewBaseClient(ctx context.Context, addr, port, agentType string) (*BaseClient, error) {
+func NewBaseClient(ctx context.Context, addr, port, agentType string, rulesAcceptor func(rules *rasp_rpc.NewRules)) (*BaseClient, error) {
 	client, err := grpc.NewClient(fmt.Sprintf("%s:%s", addr, port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -119,14 +117,25 @@ func NewBaseClient(ctx context.Context, addr, port, agentType string) (*BaseClie
 
 	stub := rasp_rpc.NewRASPCentralClient(client)
 
+	if rulesAcceptor == nil {
+		rulesAcceptor = AcceptRules
+	}
+
 	base := &BaseClient{
-		Stub:      stub,
-		AgentType: agentType,
-		ctx:       ctx,
+		Stub:          stub,
+		AgentType:     agentType,
+		ctx:           ctx,
+		RulesAcceptor: rulesAcceptor,
 	}
 
 	go func() {
 		<-ctx.Done()
+
+		err := base.DeleteAgent()
+		if err != nil {
+			log.Panic(err)
+		}
+
 		err = CloseClient(client)
 		if err != nil {
 			log.Panic(err)

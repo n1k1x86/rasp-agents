@@ -63,23 +63,15 @@ func (s *SSRFClient) AcceptRules(rules *rasp_rpc.NewRules) {
 
 func NewSSRFClient(ctx context.Context, addr, port string) (*SSRFClient, error) {
 
-	baseClient, err := base.NewBaseClient(ctx, addr, port, base.SSRF_AGENT)
+	ssrfClient := &SSRFClient{
+		rules: Rules{},
+	}
+
+	baseClient, err := base.NewBaseClient(ctx, addr, port, base.SSRF_AGENT, ssrfClient.AcceptRules)
 	if err != nil {
 		return nil, err
 	}
 
-	ssrfClient := &SSRFClient{
-		BaseClient: baseClient,
-		rules:      Rules{},
-	}
-
-	go func() {
-		<-ctx.Done()
-		err := ssrfClient.DeleteAgent()
-		if err != nil {
-			log.Panic(err)
-		}
-	}()
-
+	ssrfClient.BaseClient = baseClient
 	return ssrfClient, nil
 }
