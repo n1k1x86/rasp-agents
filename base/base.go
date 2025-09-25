@@ -58,7 +58,7 @@ func (b *BaseClient) HealthChecker() {
 		case <-b.ctx.Done():
 			return
 		default:
-			req, err := http.NewRequest("GET", b.HealthAddr+"/general/health", nil)
+			req, err := http.NewRequest("GET", "http://"+b.HealthAddr+"/general/health", nil)
 			if err != nil {
 				log.Printf("error while creating request to rasp health: %s", err.Error())
 				time.Sleep(b.CheckingHealthTimeout)
