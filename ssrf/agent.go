@@ -5,6 +5,7 @@ import (
 	"log"
 	"regexp"
 	"slices"
+	"time"
 
 	base "github.com/n1k1x86/rasp-agents/base"
 
@@ -61,13 +62,13 @@ func (s *SSRFClient) AcceptRules(rules *rasp_rpc.NewRules) {
 	log.Println("got new rules, rules", rules)
 }
 
-func NewSSRFClient(ctx context.Context, addr, port string) (*SSRFClient, error) {
+func NewSSRFClient(ctx context.Context, addr, port, healthAddr string, healthCheckTimeout time.Duration) (*SSRFClient, error) {
 
 	ssrfClient := &SSRFClient{
 		rules: Rules{},
 	}
 
-	baseClient, err := base.NewBaseClient(ctx, addr, port, base.SSRF_AGENT, ssrfClient.AcceptRules)
+	baseClient, err := base.NewBaseClient(ctx, addr, port, base.SSRF_AGENT, ssrfClient.AcceptRules, healthCheckTimeout, healthAddr)
 	if err != nil {
 		return nil, err
 	}

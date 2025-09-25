@@ -2,9 +2,12 @@ package base
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
+	"time"
 
 	rasp_rpc "github.com/n1k1x86/rasp-grpc-contract/gen/proto"
 	"google.golang.org/grpc"
@@ -12,12 +15,14 @@ import (
 )
 
 type BaseClient struct {
-	Stub          rasp_rpc.RASPCentralClient
-	AgentID       string
-	ServiceID     string
-	AgentType     string
-	RulesAcceptor func(rules *rasp_rpc.NewRules)
-	ctx           context.Context
+	Stub                  rasp_rpc.RASPCentralClient
+	AgentID               string
+	ServiceID             string
+	AgentType             string
+	HealthAddr            string
+	CheckingHealthTimeout time.Duration
+	RulesAcceptor         func(rules *rasp_rpc.NewRules)
+	ctx                   context.Context
 }
 
 func (b *BaseClient) RegAgent(agentName, serviceID string) error {
@@ -47,6 +52,45 @@ func AcceptRules(rules *rasp_rpc.NewRules) {
 	log.Println("unimplimented Accept Rules method")
 }
 
+func (b *BaseClient) HealthChecker() {
+	for {
+		select {
+		case <-b.ctx.Done():
+			return
+		default:
+			req, err := http.NewRequest("GET", b.HealthAddr+"/general/health", nil)
+			if err != nil {
+				log.Printf("error while creating request to rasp health: %s", err.Error())
+				time.Sleep(b.CheckingHealthTimeout)
+				continue
+			}
+			client := http.Client{}
+			httpResp, err := client.Do(req)
+			if err != nil {
+				log.Printf("error getting rasp health: %s", err.Error())
+				time.Sleep(b.CheckingHealthTimeout)
+				continue
+			}
+			data, err := io.ReadAll(httpResp.Body)
+			if err != nil {
+				log.Printf("error reading body in health: %s", err.Error())
+				time.Sleep(b.CheckingHealthTimeout)
+				continue
+			}
+			var resp HealthResponse
+			err = json.Unmarshal(data, &resp)
+			if err != nil {
+				log.Printf("error marshaling body in health: %s", err.Error())
+				time.Sleep(b.CheckingHealthTimeout)
+				continue
+			}
+			if resp.Status == "OK" {
+				return
+			}
+		}
+	}
+}
+
 func (b *BaseClient) RunUpdater() error {
 	req := &rasp_rpc.AgentRequest{
 		AgentID:   b.AgentID,
@@ -72,8 +116,8 @@ func (b *BaseClient) RunUpdater() error {
 				newRules, err := stream.Recv()
 				if err != nil {
 					if err == io.EOF {
-						log.Println("END OF STREAM")
-						return
+						log.Println("END OF STREAM in updater, rasp-central unhealth, run health-cheker")
+						b.HealthChecker()
 					}
 					log.Println(err)
 				}
@@ -102,7 +146,7 @@ func (b *BaseClient) DeleteAgent() error {
 	return nil
 }
 
-func NewBaseClient(ctx context.Context, addr, port, agentType string, rulesAcceptor func(rules *rasp_rpc.NewRules)) (*BaseClient, error) {
+func NewBaseClient(ctx context.Context, addr, port, agentType string, rulesAcceptor func(rules *rasp_rpc.NewRules), checkingHealthTimeout time.Duration, healthAddr string) (*BaseClient, error) {
 	client, err := grpc.NewClient(fmt.Sprintf("%s:%s", addr, port), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
@@ -122,10 +166,12 @@ func NewBaseClient(ctx context.Context, addr, port, agentType string, rulesAccep
 	}
 
 	base := &BaseClient{
-		Stub:          stub,
-		AgentType:     agentType,
-		ctx:           ctx,
-		RulesAcceptor: rulesAcceptor,
+		Stub:                  stub,
+		AgentType:             agentType,
+		ctx:                   ctx,
+		RulesAcceptor:         rulesAcceptor,
+		HealthAddr:            healthAddr,
+		CheckingHealthTimeout: checkingHealthTimeout,
 	}
 
 	go func() {

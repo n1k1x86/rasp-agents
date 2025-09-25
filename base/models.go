@@ -7,6 +7,10 @@ import (
 const SSRF_AGENT = "ssrf_agent"
 const XSS_AGENT = "xss_agent"
 
+type HealthResponse struct {
+	Status string `json:"status"`
+}
+
 func newRegAgentRequest(agentName, serviceID, agentType string) *rasp_rpc.RegAgentRequest {
 	return &rasp_rpc.RegAgentRequest{
 		ServiceID: serviceID,
