@@ -107,6 +107,10 @@ func (b *BaseClient) RunUpdater() error {
 					if err == io.EOF {
 						log.Println("END OF STREAM in updater, rasp-central unhealth, run health-cheker")
 						b.HealthChecker()
+						stream, err = b.Stub.SyncRules(b.ctx, req)
+						if err != nil {
+							log.Println(err)
+						}
 						continue
 					}
 					log.Println(err)
