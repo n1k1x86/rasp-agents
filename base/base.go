@@ -2,7 +2,6 @@ package base
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -71,22 +70,12 @@ func (b *BaseClient) HealthChecker() {
 				time.Sleep(b.CheckingHealthTimeout)
 				continue
 			}
-			data, err := io.ReadAll(httpResp.Body)
-			if err != nil {
-				log.Printf("error reading body in health: %s", err.Error())
-				time.Sleep(b.CheckingHealthTimeout)
-				continue
-			}
-			var resp HealthResponse
-			err = json.Unmarshal(data, &resp)
-			if err != nil {
-				log.Printf("error marshaling body in health: %s", err.Error())
-				time.Sleep(b.CheckingHealthTimeout)
-				continue
-			}
-			if resp.Status == "OK" {
+			fmt.Println(httpResp)
+			if httpResp.StatusCode == http.StatusOK {
 				return
 			}
+			time.Sleep(b.CheckingHealthTimeout)
+			continue
 		}
 	}
 }
