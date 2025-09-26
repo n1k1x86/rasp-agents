@@ -70,8 +70,8 @@ func (b *BaseClient) HealthChecker() {
 				time.Sleep(b.CheckingHealthTimeout)
 				continue
 			}
-			fmt.Println(httpResp)
 			if httpResp.StatusCode == http.StatusOK {
+				log.Println("health is ok, rasp is available")
 				return
 			}
 			time.Sleep(b.CheckingHealthTimeout)
@@ -107,6 +107,7 @@ func (b *BaseClient) RunUpdater() error {
 					if err == io.EOF {
 						log.Println("END OF STREAM in updater, rasp-central unhealth, run health-cheker")
 						b.HealthChecker()
+						continue
 					}
 					log.Println(err)
 				}
