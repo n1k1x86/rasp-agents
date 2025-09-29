@@ -17,15 +17,15 @@ type SSRFClient struct {
 	rules Rules
 }
 
-func (s *SSRFClient) CheckHost(host string) bool {
+func (s *SSRFClient) CheckBlackListHost(host string) bool {
 	return slices.Contains(s.rules.HostsRules, host)
 }
 
-func (s *SSRFClient) CheckIP(ip string) bool {
+func (s *SSRFClient) CheckBlackListIP(ip string) bool {
 	return slices.Contains(s.rules.IPRules, ip)
 }
 
-func (s *SSRFClient) CheckRegexp(target string) (bool, error) {
+func (s *SSRFClient) CheckBlackListRegexp(target string) (bool, error) {
 	res := false
 	for _, pattern := range s.rules.RegexpRules {
 		re, err := regexp.Compile(pattern)
@@ -39,6 +39,10 @@ func (s *SSRFClient) CheckRegexp(target string) (bool, error) {
 		}
 	}
 	return res, nil
+}
+
+func (s *SSRFClient) CheckBlackListScheme(target string) bool {
+	return slices.Contains(s.rules.SchemeRules, target)
 }
 
 func (s *SSRFClient) UpdateRules(ipRules, hostsRules, regexpRules []string) {

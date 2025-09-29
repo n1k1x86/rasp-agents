@@ -65,6 +65,7 @@ func (b *BaseClient) HealthChecker() {
 			}
 			client := http.Client{}
 			httpResp, err := client.Do(req)
+			defer httpResp.Body.Close()
 			if err != nil {
 				log.Printf("error getting rasp health: %s", err.Error())
 				time.Sleep(b.CheckingHealthTimeout)
