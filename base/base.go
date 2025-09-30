@@ -24,6 +24,10 @@ type BaseClient struct {
 	ctx                   context.Context
 }
 
+func (b *BaseClient) GetCtx() context.Context {
+	return b.ctx
+}
+
 func (b *BaseClient) RegAgent(agentName, serviceID string) error {
 	req := newRegAgentRequest(agentName, serviceID, b.AgentType)
 	resp, err := b.Stub.RegAgent(b.ctx, req)

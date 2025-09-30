@@ -6,6 +6,7 @@ import (
 
 const SSRF_AGENT = "ssrf_agent"
 const XSS_AGENT = "xss_agent"
+const SEC_MIS_AGENT = "sec_mis_agent"
 
 type HealthResponse struct {
 	Status string `json:"status"`
