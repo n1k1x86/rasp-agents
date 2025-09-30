@@ -60,9 +60,9 @@ func NewRules(ipRules, hostsRules, regexpRules []string) Rules {
 }
 
 func (s *SSRFClient) AcceptRules(rules *rasp_rpc.NewRules) {
-	s.rules.HostsRules = rules.GetRules().HostRules
-	s.rules.IPRules = rules.GetRules().IPRules
-	s.rules.RegexpRules = rules.GetRules().RegexpRules
+	s.rules.HostsRules = rules.GetSSRFRules().HostRules
+	s.rules.IPRules = rules.GetSSRFRules().IPRules
+	s.rules.RegexpRules = rules.GetSSRFRules().RegexpRules
 	log.Println("got new rules, rules", rules)
 }
 
