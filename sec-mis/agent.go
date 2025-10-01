@@ -91,20 +91,55 @@ func (s *SecMisAgent) scanJson(bytes []byte) {
 		}
 	}()
 
-	var data interface{}
+	var data map[string]interface{}
 	err := json.Unmarshal(bytes, &data)
 	if err != nil {
 		log.Printf("error while unmarshalling a json, error: %s", err.Error())
 		return
 	}
 
-	travelJson(data)
+	s.travelJson(data)
 }
 
-func travelJson(data interface{}) {
-	switch v := data.(type) {
-	default:
-		return
+func (s *SecMisAgent) travelJson(data map[string]interface{}) {
+	for key, value := range data {
+		switch v := value.(type) {
+		case string:
+			if rule, ok := s.rules.StringParams[key]; rule == v && ok {
+				log.Printf("WARNING: Found weak in rules: param: %s, value: %s", key, v)
+			}
+		case float64:
+			if rule, ok := s.rules.FloatParams[key]; rule == v && ok {
+				log.Printf("WARNING: Found weak in rules: param: %s, value: %f", key, v)
+			}
+		case bool:
+			if rule, ok := s.rules.BoolParams[key]; rule == v && ok {
+				log.Printf("WARNING: Found weak in rules: param: %s, value: %t", key, v)
+			}
+		case []interface{}:
+			for _, el := range v {
+				switch el.(type) {
+				case string:
+					if rule, ok := s.rules.StringParams[key]; rule == el && ok {
+						log.Printf("WARNING: Found weak in rules: param: %s, value: %s", key, v)
+					}
+				case float64:
+					if rule, ok := s.rules.FloatParams[key]; rule == el && ok {
+						log.Printf("WARNING: Found weak in rules: param: %s, value: %f", key, v)
+					}
+				case bool:
+					if rule, ok := s.rules.BoolParams[key]; rule == el && ok {
+						log.Printf("WARNING: Found weak in rules: param: %s, value: %t", key, v)
+					}
+				default:
+					continue
+				}
+			}
+		case map[string]interface{}:
+			s.travelJson(v)
+		default:
+			continue
+		}
 	}
 }
 
@@ -132,20 +167,71 @@ func (s *SecMisAgent) scanYaml(bytes []byte) {
 		}
 	}()
 
-	var data interface{}
+	var data map[string]interface{}
 	err := json.Unmarshal(bytes, &data)
 	if err != nil {
 		log.Printf("error while unmarshalling a json, error: %s", err.Error())
 		return
 	}
 
-	travelYaml(data)
+	s.travelYaml(data)
 }
 
-func travelYaml(data interface{}) {}
+func (s *SecMisAgent) travelYaml(data map[string]interface{}) {
+	for key, value := range data {
+		switch v := value.(type) {
+		case string:
+			if rule, ok := s.rules.StringParams[key]; rule == v && ok {
+				log.Printf("WARNING: Found weak in rules: param: %s, value: %s", key, v)
+			}
+		case float64:
+			if rule, ok := s.rules.FloatParams[key]; rule == v && ok {
+				log.Printf("WARNING: Found weak in rules: param: %s, value: %f", key, v)
+			}
+		case bool:
+			if rule, ok := s.rules.BoolParams[key]; rule == v && ok {
+				log.Printf("WARNING: Found weak in rules: param: %s, value: %t", key, v)
+			}
+		case int32:
+			if rule, ok := s.rules.IntParams[key]; rule == v && ok {
+				log.Printf("WARNING: Found weak in rules: param: %s, value: %d", key, v)
+			}
+		case []interface{}:
+			for _, el := range v {
+				switch el.(type) {
+				case string:
+					if rule, ok := s.rules.StringParams[key]; rule == el && ok {
+						log.Printf("WARNING: Found weak in rules: param: %s, value: %s", key, v)
+					}
+				case float64:
+					if rule, ok := s.rules.FloatParams[key]; rule == el && ok {
+						log.Printf("WARNING: Found weak in rules: param: %s, value: %f", key, v)
+					}
+				case bool:
+					if rule, ok := s.rules.BoolParams[key]; rule == el && ok {
+						log.Printf("WARNING: Found weak in rules: param: %s, value: %t", key, v)
+					}
+				case int32:
+					if rule, ok := s.rules.IntParams[key]; rule == el && ok {
+						log.Printf("WARNING: Found weak in rules: param: %s, value: %d", key, v)
+					}
+				default:
+					continue
+				}
+			}
+		case map[string]interface{}:
+			s.travelJson(v)
+		default:
+			continue
+		}
+	}
+}
 
 func (s *SecMisAgent) AcceptRules(rules *rasp_rpc.NewRules) {
-	s.rules.ConfigParams = rules.GetSecMisRules().ConfigParams
+	s.rules.StringParams = rules.GetSecMisRules().StringParams
+	s.rules.BoolParams = rules.GetSecMisRules().BoolParams
+	s.rules.FloatParams = rules.GetSecMisRules().FloatParams
+	s.rules.IntParams = rules.GetSecMisRules().IntParams
 	s.rules.Ports = rules.GetSecMisRules().Ports
 	log.Println("new rules were accepted for mis config agent")
 }
